@@ -1,0 +1,10 @@
+FROM mcr.microsoft.com/windows:1909
+
+COPY ["1c_installer", "c:/1c_installer"]
+ 
+RUN cmd /s /c ""c:\1c_installer\1CEnterprise 8 (x86-64).msi" /qn TRANSFORMS=1049.mst DESIGNERALLCLIENTS=1 THICKCLIENT=1 THINCLIENT=1 THINCLIENTFILE=1 SERVER=1 WEBSERVEREXT=1 CONFREPOSSERVER=1 SERVERCLIENT=1 CONVERTER77=0 LANGUAGE=RU || if "%ERRORLEVEL%"=="3010" exit 0"
+
+COPY ["conf.cfg","c:/Program Files/1cv8/conf/"]
+COPY ["nethasp.ini","c:/program files/1cv8/conf/"]
+
+RUN setx PATH "%PATH%;c:\program files\1cv8\8.3.17.1496\bin\"

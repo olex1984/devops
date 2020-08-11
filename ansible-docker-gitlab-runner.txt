@@ -1,0 +1,87 @@
+################################## ANSIBLE ####################################
+apt update
+apt install software-properties-common
+apt-add-repository --yes --update ppa:ansible/ansible
+apt install ansible
+
+################################## DOCKER ####################################
+apt-get remove docker docker-engine docker.io containerd runc
+apt-get update
+apt-get install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg-agent \
+    software-properties-common
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+apt-get update
+apt-get install docker-ce docker-ce-cli containerd.io
+
+################################## GITLAB ####################################
+docker run -itd -v /srv/gitlab/home:/home -v /srv/gitlab/config/:/etc/gitlab -v /srv/gitlab/data/:/var/opt/gitlab -v /srv/gitlab/logs/:/var/log/gitlab -p 80:80 -p 20022:22 -p 443:443 --name gitlab --hostname gitlab gitlab/gitlab-ce
+#================================================================================
+# WEB-PAGE STARTING SETUP : PASSWORD, PROJECT CREATE, SSH KEY ADD from user .ssh
+# ssh_config : add HOST (HOSTNAME) and PORT
+# HOSTS file : 127.0.0.1 or internal IP address HOSTNAME
+# COPY CODE FROM GITLAB PROJECT PAGE - clone repo/proj to local machine 
+
+mkdir htdocs
+echo "<h1>Hello World from DOCKER and GITLAB.</h1>" > htdocs/index.html
+
+
+#============================== GITLAb RUNNER - INSTALLATION and SET UP CONNECTION to WEB-SERVER ==========================
+docker exec -it gitlab bash
+apt update -y
+apt upgrade -y
+curl -L https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash
+apt-get install gitlab-runner sudo -y
+
+sudo -H -u gitlab-runner bash
+cd /home/gitlab-runner/
+ssh-keygen -t rsa -b 2048
+ssh-copy-id root@192.168.1.254
+
+#======================= RUNNER SETTINGS - WEB PAGE open =========================
+gitlab-runner register
+#gitlab-runner verify #if error - ignore !!!
+#Ctrl + D
+
+#=========================== NOTEBOOK =============================
+nano .gitlab-ci.yml
+Deploy:
+  script: rsync -avz -e ssh htdocs/* root@192.168.1.254:/var/www/html/
+git status
+git add .
+git commit -m "Initial DEPLOY"
+git push
+#===================================== END =================================
+
+#================================================================|
+#==================== ADDITIONAL INFO ===========================|
+#================================================================|
+########################## Создание эфимерного контейнера для регистрации
+##docker run --rm -it -v /srv/gitlab-runner/config:/etc/gitlab-runner gitlab/gitlab-runner register
+
+################################## WEB SERVER ###############################
+#docker run -dit --name servicedesk -p 80:80 -v /var/www/html/servicedesk:/usr/local/apache2/htdocs/ httpd
+#apt install php7.3-fpm php7.3-bz2 php7.3-cli php7.3-curl php7.3-gd php7.3-imap php7.3-json php7.3-mbstring php7.3-mysql php7.3-pgsql php7.3-sqlite3 php7.3-xml php7.3-zip
+#apt install mariadb-server
+docker run -itd --name web-server -p 8080:80 -v /srv/www/html/:/usr/local/apache2/htdocs httpd
+
+#=============================== DOCKER COMMIT COMTAINER ===================
+$ docker ps  -a
+ CONTAINER ID        IMAGE                 COMMAND                  CREATED              STATUS                          PORTS               NAMES
+ 5a8f89adeead        ubuntu:14.04          "/bin/bash"              About a minute ago   Exited (0) About a minute ago                       agitated_newton
+$ docker commit 5a8f89adeead newimagename
+
+#========================================= GITLAB-CLI ACCESS via TOKEN / CREATE USER
+curl -s --header "PRIVATE-TOKEN: MmczjSrRgF8jKEWqx4f2" https://1.1.1.2/api/v4/groups/ttm-group/
+curl --header "Private-Token: MmczjSrRgF8jKEWqx4f2" "https://1.1.1.2/api/v4/projects"
+curl --header "Private-Token: MmczjSrRgF8jKEWqx4f2" -d "email=test1@test.org&name=Firstname%20Lastname&username=test_username1&password=1234567890" "http://ttm-gitlab/api/v4/users"
+
+
+
